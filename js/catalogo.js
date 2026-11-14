@@ -73,7 +73,8 @@
     const g = {};
     lista.forEach(i => {
       const k = norm(i.n).trim() + '|' + norm(i.col).trim();
-      const x = g[k] || (g[k] = { id: k, n: i.n, col: i.col, cat: etiquetaCategoria(i.cat), f: i.f, vars: [] });
+      const x = g[k] || (g[k] = { id: k, n: i.n, col: i.col, cat: etiquetaCategoria(i.cat), f: i.f, f2: '', vars: [] });
+      if (!x.f2 && i.f2 && i.f === x.f) x.f2 = i.f2;
       x.vars.push({ c: i.c, t: i.t || 'Única', d: i.d, p: i.p, ag: i.ag });
     });
     const orden = ordenPestañas();
@@ -132,6 +133,20 @@
   }
   function foto(src, alt) {
     return h('img', { src, alt: alt || '', loading: 'lazy', decoding: 'async', onerror: ev => { ev.currentTarget.style.visibility = 'hidden'; } });
+  }
+  /** Foto del producto: una sola, o un carrusel (deslizar o flechas) cuando la prenda tiene 2 fotos. */
+  function galeria(p) {
+    if (!p.f2) return h('div', { class: 'gr' }, foto(fotoUrl(p.f), p.n));
+    const fotos = [p.f, p.f2];
+    const pista = h('div', { class: 'gal-pista' }, fotos.map((f, i) => h('div', { class: 'gal-it' }, foto(fotoUrl(f), p.n + ' (foto ' + (i + 1) + ' de 2)'))));
+    const puntos = fotos.map((f, i) => h('button', { type: 'button', class: 'gal-p' + (i ? '' : ' on'), 'aria-label': 'Ver foto ' + (i + 1), onclick: () => ir(i) }));
+    const ir = i => pista.scrollTo({ left: i * pista.clientWidth, behavior: 'smooth' });
+    const actual = () => Math.round(pista.scrollLeft / (pista.clientWidth || 1));
+    pista.addEventListener('scroll', () => { const a = actual(); puntos.forEach((d, k) => d.classList.toggle('on', k === a)); });
+    return h('div', { class: 'gr gal' }, pista,
+      h('button', { type: 'button', class: 'gal-flecha ant', 'aria-label': 'Foto anterior', onclick: () => ir(Math.max(0, actual() - 1)) }, '‹'),
+      h('button', { type: 'button', class: 'gal-flecha sig', 'aria-label': 'Foto siguiente', onclick: () => ir(Math.min(1, actual() + 1)) }, '›'),
+      h('div', { class: 'gal-puntos' }, puntos));
   }
   function tarjeta(p) {
     const etiqueta = p.agotada ? h('span', { class: 'etq' }, 'Agotado') : (p.pocas ? h('span', { class: 'etq aviso' }, 'Últimas piezas') : null);
@@ -208,7 +223,7 @@
     });
     caja.appendChild(h('button', { class: 'x', type: 'button', 'aria-label': 'Cerrar', onclick: cerrarProducto }, '×'));
     caja.appendChild(h('div', { class: 'prod' },
-      h('div', { class: 'gr' }, foto(fotoUrl(p.f), p.n)),
+      galeria(p),
       h('div', { class: 'info' },
         h('div', null, h('h2', null, p.n), p.col ? h('div', { class: 'pc' }, p.col) : null),
         precioEl,
