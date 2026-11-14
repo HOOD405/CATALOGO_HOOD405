@@ -1,5 +1,5 @@
 /* HOOD 405 · Catálogo — ajustes. Edita solo este archivo. */
-window.HOOD_CATALOGO = {
+window.HOOD_CATALOGO = https://script.google.com/macros/s/AKfycby3fVfTtqSbHB5rt2lXthaOldpd1-5zhIWdo7g8ZVozbA8nzspKt7fL_Unaro0c9K2bUw/exec {
   // Dirección /exec de tu Apps Script (la misma que usa el punto de venta). Es pública: solo entrega prendas con foto, sin costos.
   api: '',
   // WhatsApp de la tienda, con lada de país y sin signos ni espacios. Ejemplo para México: '522241234567'. Vacío = el cliente elige el chat al enviar.
