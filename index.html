@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HOOD 405 · Catálogo</title>
+<meta name="description" content="Catálogo HOOD 405: playeras, mochilas y cinturones. Pide por WhatsApp.">
+<meta name="theme-color" content="#ffffff">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="stylesheet" href="css/catalogo.css">
+</head>
+<body>
+<div class="barra-aviso" id="aviso"></div>
+<header class="cab">
+  <div class="cab-in">
+    <a class="logo" href="./" aria-label="HOOD 405, inicio"><img src="img/logo.png" alt="HOOD" width="144" height="22"></a>
+    <label class="buscador"><span class="sr">Buscar</span>
+      <input id="q" type="search" placeholder="Buscar playeras, mochilas, cinturones…" autocomplete="off" enterkeyhint="search">
+    </label>
+    <button class="btn-carrito" id="abrirCarrito" type="button" aria-label="Abrir carrito">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2.500l2.200 10.500h10.300L20 7H6.300M9.500 19.500a1 1 0 1 0 0 .01M17 19.500a1 1 0 1 0 0 .01"/></svg>
+      <span class="n" id="nCarrito" hidden>0</span>
+    </button>
+  </div>
+  <nav class="cats" id="cats" aria-label="Categorías"></nav>
+</header>
+
+<main id="main">
+  <section class="portada" id="portada" hidden>
+    <h1>Ropa y accesorios</h1>
+    <p>Elige tu prenda, arma tu pedido y envíalo por WhatsApp.</p>
+  </section>
+  <section class="colecciones" id="colecciones" hidden></section>
+  <div class="cuenta" id="cuenta"></div>
+  <section class="rejilla" id="rejilla" aria-live="polite"></section>
+  <div class="vacio" id="vacio" hidden></div>
+</main>
+
+<footer class="pie">
+  <div class="pie-in">
+    <div><strong>HOOD 405</strong><br><span id="ciudad"></span></div>
+    <div class="pie-nota" id="notaPie"></div>
+  </div>
+  <div class="pie-copy">© <span id="anio"></span> HOOD 405</div>
+</footer>
+
+<div class="fondo" id="fondo" hidden></div>
+<aside class="carrito" id="carrito" aria-label="Tu pedido" hidden>
+  <div class="carrito-cab"><h2>Tu pedido</h2><button type="button" class="cerrar" id="cerrarCarrito" aria-label="Cerrar">×</button></div>
+  <div class="carrito-cuerpo" id="carritoCuerpo"></div>
+  <div class="carrito-pie" id="carritoPie"></div>
+</aside>
+<div class="modal-fondo" id="modal" hidden><div class="modal" role="dialog" aria-modal="true" id="modalCaja"></div></div>
+<div class="aviso-flotante" id="toast" role="status"></div>
+
+<script src="config.js"></script>
+<script src="js/catalogo.js"></script>
+</body>
+</html>
