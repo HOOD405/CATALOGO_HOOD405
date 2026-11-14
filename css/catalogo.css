@@ -147,3 +147,19 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; min-height: 6
 
 .aviso-flotante { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 20px); background: var(--dark); color: #fff; padding: 11px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; z-index: 80; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: min(92vw, 460px); text-align: center; }
 .aviso-flotante.ver { opacity: 1; transform: translate(-50%, 0); }
+
+/* entrega: recoger en tienda o a domicilio con código postal */
+.entrega { display: grid; gap: 8px; }
+.entrega .et { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 800; color: var(--muted); }
+.entrega .op { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; font-weight: 700; cursor: pointer; }
+.entrega .op.on { border-color: var(--dark); background: var(--soft); }
+.entrega .op input { width: 18px; height: 18px; accent-color: var(--dark); margin: 0; }
+.entrega .cp { display: grid; gap: 6px; }
+.entrega .cp input { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; font: inherit; font-size: 16px; letter-spacing: .12em; }
+.entrega .cp input:focus { outline: none; border-color: var(--dark); }
+.entrega .cp small { color: var(--muted); }
+.pista-entrega { color: var(--warn); font-size: 13px; font-weight: 700; text-align: center; min-height: 0; }
+.pista-entrega:empty { display: none; }
+
+.entrega .cp small.cp-estado.si { color: #1f7a4d; font-weight: 700; }
+.entrega .cp small.cp-estado.no { color: var(--warn); font-weight: 700; }

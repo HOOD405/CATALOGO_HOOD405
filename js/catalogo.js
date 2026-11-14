@@ -30,6 +30,13 @@
   let items = [], prendas = [], cat = 'todo', q = '', cargando = true, ultimaCarga = 0, abiertaId = null;
   let carrito = (() => { try { const c = JSON.parse(localStorage.getItem(LS_CARRITO)); return Array.isArray(c) ? c.filter(x => x && x.c && x.q > 0) : []; } catch (e) { return []; } })();
   const guardarCarrito = () => { try { localStorage.setItem(LS_CARRITO, JSON.stringify(carrito)); } catch (e) { /* sin almacenamiento */ } };
+  const LS_ENTREGA = 'hood405.cat.entrega';
+  let entrega = (() => { try { const e = JSON.parse(localStorage.getItem(LS_ENTREGA)); return { modo: e && (e.modo === 'tienda' || e.modo === 'domicilio') ? e.modo : '', cp: e && /^\d{0,5}$/.test(e.cp || '') ? (e.cp || '') : '' }; } catch (e) { return { modo: '', cp: '' }; } })();
+  const guardarEntrega = () => { try { localStorage.setItem(LS_ENTREGA, JSON.stringify(entrega)); } catch (e) { /* sin almacenamiento */ } };
+  /** Zonas con entrega a domicilio (opcional, en config.js → cpCubiertos). Vacío = no se valida. Acepta C.P. completos ('93650') o inicios ('936'). */
+  const cpsCubiertos = () => (Array.isArray(C.cpCubiertos) ? C.cpCubiertos : []).map(x => String(x).replace(/\D/g, '')).filter(Boolean);
+  const cpEstado = cp => { const l = cpsCubiertos(); if (!l.length || !/^\d{5}$/.test(cp)) return ''; return l.some(x => cp.indexOf(x) === 0) ? 'si' : 'no'; };
+  const entregaLista = () => entrega.modo === 'tienda' || (entrega.modo === 'domicilio' && /^\d{5}$/.test(entrega.cp));
   const porCodigo = c => items.find(i => i.c === c) || null;
   const enCarrito = c => { const l = carrito.find(x => x.c === c); return l ? l.q : 0; };
 
@@ -43,10 +50,24 @@
     if (isFinite(nx) && isFinite(ny)) return nx - ny;
     return x.localeCompare(y, 'es', { numeric: true });
   }
+  /** "Playeras", "playera" y "PLAYERAS " son la misma categoría. */
+  const claveCat = s => norm(s).trim().replace(/\s+/g, ' ').split(' ').map(w => (w.length > 3 ? w.replace(/s$/, '') : w)).join(' ');
+  /** Orden de las pestañas: primero las de config.js; "Playeras de diseñador" va justo después de "Playeras" aunque config.js no la liste. */
+  function ordenPestañas() {
+    const lista = (C.categorias || []).map(c => c[0]), k = 'playera de disenador';
+    if (!lista.some(t => claveCat(t) === k)) {
+      const i = lista.findIndex(t => claveCat(t) === 'playera');
+      lista.splice(i >= 0 ? i + 1 : lista.length, 0, 'Playeras de diseñador');
+    }
+    return lista;
+  }
+  const idxOrden = (orden, label) => { const i = orden.findIndex(t => claveCat(t) === claveCat(label)); return i >= 0 ? i : 99; };
+  /** La pestaña es la categoría tal como está en el inventario (se une sin importar mayúsculas, acentos o plural). */
   function etiquetaCategoria(c) {
-    const n = norm(c).trim();
-    for (const [texto, prefijo] of (C.categorias || [])) if (n.indexOf(prefijo) === 0) return texto;
-    return String(c || '').trim() || 'Más';
+    const raw = String(c || '').trim().replace(/\s+/g, ' ');
+    if (!raw) return 'Más';
+    const k = claveCat(raw), conf = (C.categorias || []).find(x => claveCat(x[0]) === k);
+    return conf ? conf[0] : raw;
   }
   function agrupar(lista) {
     const g = {};
@@ -55,7 +76,7 @@
       const x = g[k] || (g[k] = { id: k, n: i.n, col: i.col, cat: etiquetaCategoria(i.cat), f: i.f, vars: [] });
       x.vars.push({ c: i.c, t: i.t || 'Única', d: i.d, p: i.p, ag: i.ag });
     });
-    const orden = (C.categorias || []).map(c => c[0]);
+    const orden = ordenPestañas();
     return Object.keys(g).map(k => {
       const x = g[k];
       x.vars.sort((a, b) => ordenTalla(a.t, b.t));
@@ -66,7 +87,7 @@
       const ultimas = x.vars.filter(v => v.d > 0).reduce((s, v) => s + v.d, 0);
       x.pocas = !x.agotada && ultimas <= 2;
       return x;
-    }).sort((a, b) => (a.agotada - b.agotada) || ((orden.indexOf(a.cat) + 1 || 99) - (orden.indexOf(b.cat) + 1 || 99)) || a.n.localeCompare(b.n, 'es') || a.col.localeCompare(b.col, 'es'));
+    }).sort((a, b) => (a.agotada - b.agotada) || (idxOrden(orden, a.cat) - idxOrden(orden, b.cat)) || a.n.localeCompare(b.n, 'es') || a.col.localeCompare(b.col, 'es'));
   }
 
   async function cargar(forzar) {
@@ -95,9 +116,9 @@
 
   /* ---------- pantalla principal ---------- */
   function categoriasDisponibles() {
-    const orden = (C.categorias || []).map(c => c[0]), presentes = {};
+    const orden = ordenPestañas(), presentes = {};
     prendas.forEach(p => { presentes[p.cat] = true; });
-    const lista = Object.keys(presentes).sort((a, b) => ((orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99)) || a.localeCompare(b, 'es'));
+    const lista = Object.keys(presentes).sort((a, b) => (idxOrden(orden, a) - idxOrden(orden, b)) || a.localeCompare(b, 'es'));
     return lista;
   }
   function filtradas() {
@@ -256,8 +277,27 @@
     const validas = lineasValidas(), total = totalCarrito();
     pie.appendChild(h('div', { class: 'total' }, h('span', null, 'Total'), h('span', null, money(total) + ' MXN')));
     pie.appendChild(h('div', { class: 'nota-envio' }, (C.avisoEntrega || '') + ' Te confirmamos disponibilidad y forma de pago por WhatsApp.'));
-    pie.appendChild(h('button', { class: 'btn wa ancho', id: 'btnComprar', type: 'button', disabled: !validas.length, onclick: comprar },
+    const pista = h('div', { class: 'pista-entrega', role: 'status' });
+    const actualizarBoton = () => {
+      const b = $('btnComprar'), listaE = entregaLista();
+      if (b) b.disabled = !validas.length || !listaE;
+      const ce = $('cpEstado'), est = entrega.modo === 'domicilio' ? cpEstado(entrega.cp) : '';
+      if (ce) { ce.className = 'cp-estado' + (est ? ' ' + est : ''); ce.textContent = est === 'si' ? '✓ Sí hay entrega a domicilio en tu zona (confirmamos el costo por WhatsApp).' : est === 'no' ? 'Por ahora no llegamos a tu zona. Puedes recoger en tienda o escribirnos para ver opciones.' : 'Te confirmamos por WhatsApp si hay entrega en tu zona.'; }
+      pista.textContent = !validas.length ? '' : (listaE ? '' : (entrega.modo === 'domicilio' ? 'Escribe tu código postal de 5 dígitos para consultar la entrega.' : 'Elige cómo lo quieres: recoger en tienda o entrega a domicilio.'));
+    };
+    const opcion = (valor, texto) => h('label', { class: 'op' + (entrega.modo === valor ? ' on' : '') },
+      h('input', { type: 'radio', name: 'entrega', value: valor, checked: entrega.modo === valor, onchange: () => { entrega.modo = valor; guardarEntrega(); pintarCarrito(); if (valor === 'domicilio') { const c = $('cp'); if (c) c.focus(); } } }), h('span', null, texto));
+    pie.appendChild(h('div', { class: 'entrega' },
+      h('div', { class: 'et' }, '¿Cómo lo quieres?'),
+      opcion('tienda', 'Recoger en tienda'),
+      opcion('domicilio', 'Entrega a domicilio (consultar)'),
+      entrega.modo === 'domicilio' ? h('div', { class: 'cp' },
+        h('input', { id: 'cp', type: 'text', inputmode: 'numeric', autocomplete: 'postal-code', maxlength: '5', placeholder: 'Código postal (5 dígitos)', 'aria-label': 'Código postal', value: entrega.cp,
+          oninput: ev => { ev.target.value = ev.target.value.replace(/\D/g, '').slice(0, 5); entrega.cp = ev.target.value; guardarEntrega(); actualizarBoton(); } }),
+        h('small', { id: 'cpEstado', class: 'cp-estado' }, 'Te confirmamos por WhatsApp si hay entrega en tu zona.')) : null));
+    pie.appendChild(h('button', { class: 'btn wa ancho', id: 'btnComprar', type: 'button', disabled: !validas.length || !entregaLista(), onclick: comprar },
       h('span', { 'aria-hidden': 'true', style: 'display:inline-flex', html: '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.600 15.100L2 22l5-1.300A10 10 0 1 0 12 2zm5.200 14.200c-.2.600-1.300 1.200-1.800 1.200-.5.100-1 .2-3.300-.7-2.800-1.200-4.600-4.100-4.700-4.300-.1-.2-1.100-1.500-1.100-2.800s.7-2 1-2.300c.2-.3.500-.3.700-.3h.5c.2 0 .4 0 .6.500l.9 2.100c.1.200.1.400 0 .5l-.4.600-.4.400c-.1.200-.3.300-.1.600.2.300.8 1.300 1.700 2.100 1.200 1 2.200 1.300 2.500 1.500.3.100.5.100.7-.1l.9-1.100c.2-.3.400-.2.700-.1l2 1c.3.100.5.200.5.300.1.200.1.700-.1 1.300z"/></svg>' }), 'Comprar por WhatsApp'));
+    pie.appendChild(pista); actualizarBoton();
     pie.appendChild(h('button', { class: 'quitar', type: 'button', style: 'justify-self:center', onclick: () => { carrito = []; guardarCarrito(); notaCambio = ''; pintarCarrito(); } }, 'Vaciar pedido'));
   }
   function abrirCarrito() {
@@ -275,11 +315,11 @@
     const total = lineas.reduce((s, x) => s + x.q * x.i.p, 0);
     const filas = lineas.map(x => x.q + 'x ' + x.c + ' · ' + x.i.n + (x.i.col ? ' · ' + x.i.col : '') + (x.i.t && x.i.t !== 'Única' ? ' · Talla ' + x.i.t : '') + ' · ' + moneyCorto(x.i.p));
     return ['Hola ' + (C.tienda || 'HOOD 405') + ', quiero hacer este pedido:', '', filas.join('\n'), '', 'Total: ' + moneyCorto(total) + ' MXN', '',
-      'Mi nombre: ', 'Prefiero: recoger en tienda / entrega a domicilio (¿hay en mi zona?)', '¿Me confirman disponibilidad? Gracias.'].join('\n');
+      'Mi nombre: ', entrega.modo === 'domicilio' ? 'Entrega: a domicilio · C.P. ' + entrega.cp + (cpEstado(entrega.cp) === 'si' ? ' (zona con entrega)' : cpEstado(entrega.cp) === 'no' ? ' (vi que no llegan a mi zona, ¿hay opción?)' : ' (¿tienen entrega en mi zona?)') : 'Entrega: recoger en tienda', '¿Me confirman disponibilidad? Gracias.'].join('\n');
   }
   const urlWhatsapp = texto => 'https://wa.me/' + String(C.whatsapp || '').replace(/\D+/g, '') + '?text=' + encodeURIComponent(texto);
   async function comprar() {
-    const btn = $('btnComprar'); if (!btn || btn.disabled) return;
+    const btn = $('btnComprar'); if (!btn || btn.disabled || !entregaLista()) return;
     let ventana = null;
     try { ventana = window.open('', '_blank'); } catch (e) { ventana = null; }   // se abre ya (con el toque) para que el navegador no la bloquee
     const texto0 = btn.lastChild.textContent;
