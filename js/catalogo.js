@@ -36,7 +36,7 @@
   /** Zonas con entrega a domicilio (opcional, en config.js → cpCubiertos). Vacío = no se valida. Acepta C.P. completos ('93650') o inicios ('936'). */
   const cpsCubiertos = () => (Array.isArray(C.cpCubiertos) ? C.cpCubiertos : []).map(x => String(x).replace(/\D/g, '')).filter(Boolean);
   const cpEstado = cp => { const l = cpsCubiertos(); if (!l.length || !/^\d{5}$/.test(cp)) return ''; return l.some(x => cp.indexOf(x) === 0) ? 'si' : 'no'; };
-  const entregaLista = () => entrega.modo === 'tienda' || (entrega.modo === 'domicilio' && /^\d{5}$/.test(entrega.cp));
+  const entregaLista = () => entrega.modo === 'tienda' || (entrega.modo === 'domicilio' && /^\d{5}$/.test(entrega.cp) && cpEstado(entrega.cp) !== 'no');
   const porCodigo = c => items.find(i => i.c === c) || null;
   const enCarrito = c => { const l = carrito.find(x => x.c === c); return l ? l.q : 0; };
 
@@ -282,8 +282,8 @@
       const b = $('btnComprar'), listaE = entregaLista();
       if (b) b.disabled = !validas.length || !listaE;
       const ce = $('cpEstado'), est = entrega.modo === 'domicilio' ? cpEstado(entrega.cp) : '';
-      if (ce) { ce.className = 'cp-estado' + (est ? ' ' + est : ''); ce.textContent = est === 'si' ? '✓ Sí hay entrega a domicilio en tu zona (confirmamos el costo por WhatsApp).' : est === 'no' ? 'Por ahora no llegamos a tu zona. Puedes recoger en tienda o escribirnos para ver opciones.' : 'Te confirmamos por WhatsApp si hay entrega en tu zona.'; }
-      pista.textContent = !validas.length ? '' : (listaE ? '' : (entrega.modo === 'domicilio' ? 'Escribe tu código postal de 5 dígitos para consultar la entrega.' : 'Elige cómo lo quieres: recoger en tienda o entrega a domicilio.'));
+      if (ce) { ce.className = 'cp-estado' + (est ? ' ' + est : ''); ce.textContent = est === 'si' ? '✓ Tu código postal es válido para entregas a domicilio. Confirmamos el costo por WhatsApp.' : est === 'no' ? 'Lo sentimos, de momento no cubrimos tu zona. Por favor selecciona "Recoger en tienda" para continuar.' : 'Te confirmamos por WhatsApp si hay entrega en tu zona.'; }
+      pista.textContent = !validas.length ? '' : (listaE || (entrega.modo === 'domicilio' && cpEstado(entrega.cp) === 'no') ? '' : (entrega.modo === 'domicilio' ? 'Escribe tu código postal de 5 dígitos para consultar la entrega.' : 'Elige cómo lo quieres: recoger en tienda o entrega a domicilio.'));
     };
     const opcion = (valor, texto) => h('label', { class: 'op' + (entrega.modo === valor ? ' on' : '') },
       h('input', { type: 'radio', name: 'entrega', value: valor, checked: entrega.modo === valor, onchange: () => { entrega.modo = valor; guardarEntrega(); pintarCarrito(); if (valor === 'domicilio') { const c = $('cp'); if (c) c.focus(); } } }), h('span', null, texto));
@@ -315,7 +315,7 @@
     const total = lineas.reduce((s, x) => s + x.q * x.i.p, 0);
     const filas = lineas.map(x => x.q + 'x ' + x.c + ' · ' + x.i.n + (x.i.col ? ' · ' + x.i.col : '') + (x.i.t && x.i.t !== 'Única' ? ' · Talla ' + x.i.t : '') + ' · ' + moneyCorto(x.i.p));
     return ['Hola ' + (C.tienda || 'HOOD 405') + ', quiero hacer este pedido:', '', filas.join('\n'), '', 'Total: ' + moneyCorto(total) + ' MXN', '',
-      'Mi nombre: ', entrega.modo === 'domicilio' ? 'Entrega: a domicilio · C.P. ' + entrega.cp + (cpEstado(entrega.cp) === 'si' ? ' (zona con entrega)' : cpEstado(entrega.cp) === 'no' ? ' (vi que no llegan a mi zona, ¿hay opción?)' : ' (¿tienen entrega en mi zona?)') : 'Entrega: recoger en tienda', '¿Me confirman disponibilidad? Gracias.'].join('\n');
+      'Mi nombre: ', entrega.modo === 'domicilio' ? 'Entrega: a domicilio · C.P. ' + entrega.cp + (cpEstado(entrega.cp) === 'si' ? ' (zona con entrega)' : ' (¿tienen entrega en mi zona?)') : 'Entrega: recoger en tienda', '¿Me confirman disponibilidad? Gracias.'].join('\n');
   }
   const urlWhatsapp = texto => 'https://wa.me/' + String(C.whatsapp || '').replace(/\D+/g, '') + '?text=' + encodeURIComponent(texto);
   async function comprar() {

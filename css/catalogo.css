@@ -162,4 +162,4 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; min-height: 6
 .pista-entrega:empty { display: none; }
 
 .entrega .cp small.cp-estado.si { color: #1f7a4d; font-weight: 700; }
-.entrega .cp small.cp-estado.no { color: var(--warn); font-weight: 700; }
+.entrega .cp small.cp-estado.no { color: #b3261e; font-weight: 700; }
