@@ -9,7 +9,7 @@ window.HOOD_CATALOGO = {
   // Pestañas del catálogo, en este orden: [texto, empieza con…]. Una prenda cuya categoría empieza así cae en esa pestaña.
   categorias: [['Playeras', 'playera'], ['Mochilas', 'mochila'], ['Cinturones', 'cintur']],
   // CÓDIGOS POSTALES CON ENTREGA A DOMICILIO. Cambia 00000 por los tuyos, separados por coma. Ejemplo: ['93650', '93651']. También sirve el inicio, como '936' para toda esa zona. Si lo dejas vacío [] no se valida y la entrega se confirma por WhatsApp.
-  cpCubiertos: ['00000'],
+  cpCubiertos: ['93650'],
   // Aviso sobre la entrega (aparece arriba y en el carrito)
   avisoEntrega: 'Recoge en tienda o consulta si hay entrega a domicilio en tu zona.'
 };
