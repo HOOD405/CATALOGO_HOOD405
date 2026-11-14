@@ -174,3 +174,5 @@ main { max-width: 1180px; margin: 0 auto; padding: 18px 16px 40px; min-height: 6
 .gal-puntos { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; gap: 8px; pointer-events: none; }
 .gal-p { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--dark); background: rgba(255,255,255,.85); padding: 0; pointer-events: auto; cursor: pointer; }
 .gal-p.on { background: var(--dark); }
+
+.disp-tallas { margin: 2px 0 8px; font-size: 14px; font-weight: 700; color: #1f7a4d; }

@@ -77,6 +77,11 @@
       if (!x.f2 && i.f2 && i.f === x.f) x.f2 = i.f2;
       x.vars.push({ c: i.c, t: i.t || 'Única', d: i.d, p: i.p, ag: i.ag });
     });
+    // Tallas del mismo producto con el nombre escrito distinto en el inventario: si comparten la foto, se muestran como una sola prenda.
+    const padre = {}, raiz = k => { while (padre[k] !== k) k = padre[k] = padre[padre[k]]; return k; }, dueno = {};
+    Object.keys(g).forEach(k => { padre[k] = k; });
+    Object.keys(g).forEach(k => { const f = g[k].f; if (!f) return; if (dueno[f] === undefined) dueno[f] = k; else padre[raiz(k)] = raiz(dueno[f]); });
+    Object.keys(g).forEach(k => { const r = raiz(k); if (r !== k) { g[r].vars = g[r].vars.concat(g[k].vars); if (!g[r].f2 && g[k].f2) g[r].f2 = g[k].f2; delete g[k]; } });
     const orden = ordenPestañas();
     return Object.keys(g).map(k => {
       const x = g[k];
@@ -147,6 +152,13 @@
       h('button', { type: 'button', class: 'gal-flecha ant', 'aria-label': 'Foto anterior', onclick: () => ir(Math.max(0, actual() - 1)) }, '‹'),
       h('button', { type: 'button', class: 'gal-flecha sig', 'aria-label': 'Foto siguiente', onclick: () => ir(Math.min(1, actual() + 1)) }, '›'),
       h('div', { class: 'gal-puntos' }, puntos));
+  }
+  /** "Disponible en talla M" / "Disponible en tallas M y L" / "…M, L y XL". */
+  function dispTallas(p) {
+    const t = p.vars.filter(v => v.d > 0).map(v => v.t);
+    if (!t.length || (t.length === 1 && t[0] === 'Única')) return null;
+    const lista = t.length === 1 ? t[0] : t.slice(0, -1).join(', ') + ' y ' + t[t.length - 1];
+    return h('div', { class: 'disp-tallas' }, 'Disponible en ' + (t.length === 1 ? 'talla ' : 'tallas ') + lista);
   }
   function tarjeta(p) {
     const etiqueta = p.agotada ? h('span', { class: 'etq' }, 'Agotado') : (p.pocas ? h('span', { class: 'etq aviso' }, 'Últimas piezas') : null);
@@ -228,7 +240,7 @@
         h('div', null, h('h2', null, p.n), p.col ? h('div', { class: 'pc' }, p.col) : null),
         precioEl,
         p.agotada ? h('div', { class: 'aviso-cambio' }, 'Esta prenda se agotó por ahora.') : null,
-        h('div', null, h('div', { class: 'et' }, 'Talla'), chips),
+        h('div', null, h('div', { class: 'et' }, 'Talla'), dispTallas(p), chips),
         h('div', null, h('div', { class: 'et' }, 'Cantidad'), cantEl),
         msg, btnAgregar,
         h('button', { class: 'btn ancho', type: 'button', onclick: () => compartir(p, sel) }, 'Compartir'),
