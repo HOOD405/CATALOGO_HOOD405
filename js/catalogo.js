@@ -96,6 +96,9 @@
     }).sort((a, b) => (a.agotada - b.agotada) || (idxOrden(orden, a.cat) - idxOrden(orden, b.cat)) || a.n.localeCompare(b.n, 'es') || a.col.localeCompare(b.col, 'es'));
   }
 
+  /** Repinta la página, pero no mientras hay una ventana abierta: si no, en el celular la página de atrás salta y la ventana se mueve sola. */
+  let pendiente = false;
+  function repintar() { if ($('modal').hidden) { pendiente = false; pintar(); } else pendiente = true; }
   async function cargar(forzar) {
     if (!C.api) { cargando = false; pintar(); return false; }
     try {
@@ -104,10 +107,10 @@
       if (!j || j.ok !== true || !Array.isArray(j.items)) throw new Error('respuesta inválida');
       items = j.items; prendas = agrupar(items); ultimaCarga = Date.now(); cargando = false;
       try { localStorage.setItem(LS_DATOS, JSON.stringify({ t: ultimaCarga, items })); } catch (e) { /* sin almacenamiento */ }
-      pintar(); pintarCarrito();
+      repintar(); pintarCarrito();
       return true;
     } catch (e) {
-      cargando = false; pintar();
+      cargando = false; repintar();
       if (forzar) aviso('No pude actualizar el catálogo. Revisa tu internet.');
       return false;
     }
@@ -171,23 +174,25 @@
   }
   /** Franja en movimiento (portada): solo la 2.ª foto de cada prenda con existencia. Dos filas, en sentidos contrarios. */
   function pintarFranja(cats) {
-    const fr = $('franja'); vaciar(fr);
+    const fr = $('franja'); if (!fr) return;
     const fotos = [];
     const porCat = cats.map(c => prendas.filter(p => p.cat === c && !p.agotada && p.f2));
     for (let k = 0; fotos.length < 24 && porCat.some(l => k < l.length); k++) porCat.forEach(l => { if (k < l.length && fotos.length < 24) fotos.push(l[k]); });
-    if (cat !== 'todo' || q || fotos.length < 3) { fr.hidden = true; return; }
-    const A = fotos.filter((p, i) => i % 2 === 0), B = fotos.filter((p, i) => i % 2 === 1);
+    if (cat !== 'todo' || q || fotos.length < 3) { fr.hidden = true; fr.dataset.k = ''; return; }
+    const clave = fotos.map(p => p.f2).join('|');
+    if (fr.dataset.k === clave && fr.firstChild && !fr.hidden) return;  // mismas fotos: no se reinicia la animación
+    fr.dataset.k = clave;
     const hasta6 = l => { const r = []; while (r.length < 10 || r.length % l.length) r.push(l[r.length % l.length]); return r; };
-    const fila = (lista, der) => {
+    const fila = (lista, der) => {  // una sola franja
       const base = hasta6(lista);
       const it = (p, dup) => h('button', { class: 'it', type: 'button', onclick: () => abrirProducto(p.id), 'aria-label': p.n + (p.col ? ' ' + p.col : ''), tabindex: dup ? '-1' : '0', 'aria-hidden': dup ? 'true' : null },
         h('img', { src: fotoUrl(p.f2), alt: '', loading: 'lazy', draggable: 'false', onerror: ev => { const b = ev.currentTarget.parentNode; if (b && b.parentNode) b.parentNode.removeChild(b); } }));
-      const pista = h('div', { class: 'pista', style: '--dur:' + Math.max(40, base.length * 7) + 's' }, base.map(p => it(p, false)).concat(base.map(p => { const e = it(p, true); e.classList.add('dup'); return e; })));
+      const pista = h('div', { class: 'pista', style: '--dur:' + Math.max(50, base.length * 6) + 's' }, base.map(p => it(p, false)).concat(base.map(p => { const e = it(p, true); e.classList.add('dup'); return e; })));
       return h('div', { class: 'fila' + (der ? ' der' : '') }, pista);
     };
+    vaciar(fr);
     fr.appendChild(h('div', { class: 'tit' }, 'Lo nuevo en HOOD'));
-    fr.appendChild(fila(A, false));
-    if (B.length) fr.appendChild(fila(B, true));
+    fr.appendChild(fila(fotos, false));
     const pausa = on => fr.classList.toggle('pausa', on); let t = 0;
     fr.addEventListener('touchstart', () => { clearTimeout(t); pausa(true); }, { passive: true });
     fr.addEventListener('touchend', () => { clearTimeout(t); t = setTimeout(() => pausa(false), 1500); }, { passive: true });
@@ -200,7 +205,7 @@
     if (cats.length > 1) [['todo', 'Todo']].concat(cats.map(c => [c, c])).forEach(([id, t]) => nav.appendChild(h('button', { type: 'button', class: id === cat ? 'on' : '', onclick: () => { cat = id; $('q').value = ''; q = ''; pintar(); window.scrollTo({ top: 0 }); } }, t)));
     const rej = $('rejilla'), vacio = $('vacio'); vaciar(rej); vacio.hidden = true;
     $('portada').hidden = !(cat === 'todo' && !q && prendas.length);
-    pintarFranja(cats);
+    try { pintarFranja(cats); } catch (e) { const f = $('franja'); if (f) f.hidden = true; }  // la franja es un adorno: si falla, el catálogo sigue
     if (cargando && !prendas.length) {
       for (let i = 0; i < 8; i++) rej.appendChild(h('div', { class: 'tarjeta esq' }, h('div', { class: 'foto' }), h('div', { class: 'l' }), h('div', { class: 'l c' })));
       $('cuenta').textContent = 'Cargando catálogo…'; return;
@@ -268,6 +273,7 @@
   }
   function cerrarProducto() {
     $('modal').hidden = true; abiertaId = null;
+    if (pendiente) repintar();
     if (!$('carrito').hidden) return;
     document.body.classList.remove('fijo');
     try { history.replaceState(null, '', location.pathname); } catch (e) { /* sin historial */ }
@@ -402,7 +408,7 @@
     $('abrirCarrito').addEventListener('click', abrirCarrito);
     $('cerrarCarrito').addEventListener('click', cerrarCarrito);
     $('fondo').addEventListener('click', cerrarCarrito);
-    $('modal').addEventListener('mousedown', ev => { if (ev.target === $('modal')) cerrarProducto(); });
+    $('modal').addEventListener('click', ev => { if (ev.target === $('modal')) cerrarProducto(); });
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape') { if (!$('modal').hidden) cerrarProducto(); else if (!$('carrito').hidden) cerrarCarrito(); } });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - ultimaCarga > 60000) cargar(false); });
     setInterval(() => { if (!document.hidden) cargar(false); }, 120000);
