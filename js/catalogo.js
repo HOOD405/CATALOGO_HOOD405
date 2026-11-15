@@ -161,13 +161,37 @@
     return h('div', { class: 'disp-tallas' }, 'Disponible en ' + (t.length === 1 ? 'talla ' : 'tallas ') + lista);
   }
   function tarjeta(p) {
-    const etiqueta = p.agotada ? h('span', { class: 'etq' }, 'Agotado') : (p.pocas ? h('span', { class: 'etq aviso' }, 'Últimas piezas') : null);
+    const etiqueta = p.agotada ? h('span', { class: 'etq' }, 'Agotado') : null;
     return h('button', { class: 'tarjeta' + (p.agotada ? ' agotada' : ''), type: 'button', onclick: () => abrirProducto(p.id), 'aria-label': p.n + (p.col ? ' ' + p.col : '') },
       h('div', { class: 'foto' }, foto(fotoUrl(p.f), p.n), etiqueta),
       h('div', { class: 'nombre' }, p.n),
       p.col ? h('div', { class: 'color' }, p.col) : null,
       h('div', { class: 'precio' }, (p.variaP ? 'Desde ' : '') + money(p.p) + ' ', h('small', null, 'MXN')),
       p.vars.length > 1 || p.vars[0].t !== 'Única' ? h('div', { class: 'tallas' }, p.vars.map(v => h('span', { class: v.d > 0 ? '' : 'no' }, v.t))) : null);
+  }
+  /** Franja en movimiento (portada): solo la 2.ª foto de cada prenda con existencia. Dos filas, en sentidos contrarios. */
+  function pintarFranja(cats) {
+    const fr = $('franja'); vaciar(fr);
+    const fotos = [];
+    const porCat = cats.map(c => prendas.filter(p => p.cat === c && !p.agotada && p.f2));
+    for (let k = 0; fotos.length < 24 && porCat.some(l => k < l.length); k++) porCat.forEach(l => { if (k < l.length && fotos.length < 24) fotos.push(l[k]); });
+    if (cat !== 'todo' || q || fotos.length < 3) { fr.hidden = true; return; }
+    const A = fotos.filter((p, i) => i % 2 === 0), B = fotos.filter((p, i) => i % 2 === 1);
+    const hasta6 = l => { const r = []; while (r.length < 10 || r.length % l.length) r.push(l[r.length % l.length]); return r; };
+    const fila = (lista, der) => {
+      const base = hasta6(lista);
+      const it = (p, dup) => h('button', { class: 'it', type: 'button', onclick: () => abrirProducto(p.id), 'aria-label': p.n + (p.col ? ' ' + p.col : ''), tabindex: dup ? '-1' : '0', 'aria-hidden': dup ? 'true' : null },
+        h('img', { src: fotoUrl(p.f2), alt: '', loading: 'lazy', draggable: 'false', onerror: ev => { const b = ev.currentTarget.parentNode; if (b && b.parentNode) b.parentNode.removeChild(b); } }));
+      const pista = h('div', { class: 'pista', style: '--dur:' + Math.max(40, base.length * 7) + 's' }, base.map(p => it(p, false)).concat(base.map(p => { const e = it(p, true); e.classList.add('dup'); return e; })));
+      return h('div', { class: 'fila' + (der ? ' der' : '') }, pista);
+    };
+    fr.appendChild(h('div', { class: 'tit' }, 'Lo nuevo en HOOD'));
+    fr.appendChild(fila(A, false));
+    if (B.length) fr.appendChild(fila(B, true));
+    const pausa = on => fr.classList.toggle('pausa', on); let t = 0;
+    fr.addEventListener('touchstart', () => { clearTimeout(t); pausa(true); }, { passive: true });
+    fr.addEventListener('touchend', () => { clearTimeout(t); t = setTimeout(() => pausa(false), 1500); }, { passive: true });
+    fr.hidden = false;
   }
   function pintar() {
     const cats = categoriasDisponibles();
@@ -176,14 +200,7 @@
     if (cats.length > 1) [['todo', 'Todo']].concat(cats.map(c => [c, c])).forEach(([id, t]) => nav.appendChild(h('button', { type: 'button', class: id === cat ? 'on' : '', onclick: () => { cat = id; $('q').value = ''; q = ''; pintar(); window.scrollTo({ top: 0 }); } }, t)));
     const rej = $('rejilla'), vacio = $('vacio'); vaciar(rej); vacio.hidden = true;
     $('portada').hidden = !(cat === 'todo' && !q && prendas.length);
-    const col = $('colecciones'); vaciar(col);
-    if (cat === 'todo' && !q && cats.length > 1) {
-      cats.forEach(c => {
-        const ps = prendas.filter(p => p.cat === c), muestra = ps.find(p => !p.agotada) || ps[0];
-        col.appendChild(h('button', { class: 'coleccion', type: 'button', onclick: () => { cat = c; pintar(); window.scrollTo({ top: 0 }); } }, foto(fotoUrl(muestra.f), c), h('span', null, c, h('small', null, ps.length + (ps.length === 1 ? ' modelo' : ' modelos')))));
-      });
-      col.hidden = false;
-    } else col.hidden = true;
+    pintarFranja(cats);
     if (cargando && !prendas.length) {
       for (let i = 0; i < 8; i++) rej.appendChild(h('div', { class: 'tarjeta esq' }, h('div', { class: 'foto' }), h('div', { class: 'l' }), h('div', { class: 'l c' })));
       $('cuenta').textContent = 'Cargando catálogo…'; return;
@@ -217,7 +234,7 @@
       p.vars.forEach(v => {
         const agot = v.d <= 0;
         chips.appendChild(h('button', { type: 'button', role: 'radio', 'aria-checked': sel === v ? 'true' : 'false', class: 'chip' + (sel === v ? ' on' : '') + (agot ? ' no' : ''), disabled: agot,
-          onclick: () => { sel = v; cant = 1; msg.textContent = ''; refrescar(); } }, v.t, !agot && v.d <= 2 ? h('small', null, v.d === 1 ? 'Última' : 'Últimas ' + v.d) : null));
+          onclick: () => { sel = v; cant = 1; msg.textContent = ''; refrescar(); } }, v.t));
       });
       precioEl.textContent = money(sel ? sel.p : p.p) + ' MXN';
       const max = tope(); if (cant > max) cant = Math.max(1, max);
